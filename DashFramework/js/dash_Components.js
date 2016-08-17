@@ -1136,10 +1136,14 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
         {
             thisChart.chartDefinition.dataAccessId = dataAccessId;
             thisChart.chartDefinition.path = path;
-            thisChart.chartDefinition.colors = colorSet;
+            
             thisChart.chartDefinition.extensionPoints = extPoints;
             thisChart.addAxisTitles = addAxisTitles;
-            thisChart.addTooltipLabels = addTooltipLabels; 
+            thisChart.addTooltipLabels = addTooltipLabels;
+            if(type!=="heatgrid")
+            {
+                thisChart.chartDefinition.colors = colorSet;
+            }
         }
         /*
         thisChart.postFetch = function() {};
@@ -1157,7 +1161,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
         thisChart.userSelectionAction = function() {},
         thisChart.valueFormat = function() {},
         */
-        if((type==="bar")||(type==="line")||(type==="pie")||(type==="point"))
+        if((type==="bar")||(type==="line")||(type==="pie")||(type==="point")||(type==="boxplot")||(type==="treemap")||(type==="heatgrid"))
         {
             thisChart.preExecution = function()
             {
@@ -1182,52 +1186,55 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                     this.resizeHandlerAttached = true;
                 }
             };
-            thisChart.chartDefinition.orthoAxisTickFormatter = function f(v) 
-            { 
-                function number_Format(numero)
-                {
-                    // Variable que contendra el resultado final
-                    var resultado = "";
-             
-                    // Si el numero empieza por el valor "-" (numero negativo)
-                    if(numero[0]=="-")
+            if(type!=="heatgrid")
+            {
+                thisChart.chartDefinition.orthoAxisTickFormatter = function f(v) 
+                { 
+                    function number_Format(numero)
                     {
-                        // Cogemos el numero eliminando los posibles puntos que tenga, y sin
-                        // el signo negativo
-                        nuevoNumero=numero.replace(/\./g,'').substring(1);
+                        // Variable que contendra el resultado final
+                        var resultado = "";
+                 
+                        // Si el numero empieza por el valor "-" (numero negativo)
+                        if(numero[0]=="-")
+                        {
+                            // Cogemos el numero eliminando los posibles puntos que tenga, y sin
+                            // el signo negativo
+                            nuevoNumero=numero.replace(/\./g,'').substring(1);
+                        }
+                        else
+                        {
+                            // Cogemos el numero eliminando los posibles puntos que tenga
+                            nuevoNumero=numero.replace(/\./g,'');
+                        }
+                 
+                        // Si tiene decimales, se los quitamos al numero
+                        if(numero.indexOf(",")>=0)
+                            nuevoNumero=nuevoNumero.substring(0,nuevoNumero.indexOf(","));
+                 
+                        // Ponemos un punto cada 3 caracteres
+                        for (var j, i = nuevoNumero.length - 1, j = 0; i >= 0; i--, j++)
+                            resultado = nuevoNumero.charAt(i) + ((j > 0) && (j % 3 == 0)? ".": "") + resultado;
+                 
+                        // Si tiene decimales, se lo añadimos al numero una vez forateado con 
+                        // los separadores de miles
+                        if(numero.indexOf(",")>=0)
+                            resultado+=numero.substring(numero.indexOf(","));
+                 
+                        if(numero[0]=="-")
+                        {
+                            // Devolvemos el valor añadiendo al inicio el signo negativo
+                            return "-"+resultado;
+                        }
+                        else
+                        {
+                            return resultado;
+                        }
                     }
-                    else
-                    {
-                        // Cogemos el numero eliminando los posibles puntos que tenga
-                        nuevoNumero=numero.replace(/\./g,'');
-                    }
-             
-                    // Si tiene decimales, se los quitamos al numero
-                    if(numero.indexOf(",")>=0)
-                        nuevoNumero=nuevoNumero.substring(0,nuevoNumero.indexOf(","));
-             
-                    // Ponemos un punto cada 3 caracteres
-                    for (var j, i = nuevoNumero.length - 1, j = 0; i >= 0; i--, j++)
-                        resultado = nuevoNumero.charAt(i) + ((j > 0) && (j % 3 == 0)? ".": "") + resultado;
-             
-                    // Si tiene decimales, se lo añadimos al numero una vez forateado con 
-                    // los separadores de miles
-                    if(numero.indexOf(",")>=0)
-                        resultado+=numero.substring(numero.indexOf(","));
-             
-                    if(numero[0]=="-")
-                    {
-                        // Devolvemos el valor añadiendo al inicio el signo negativo
-                        return "-"+resultado;
-                    }
-                    else
-                    {
-                        return resultado;
-                    }
-                }
-                var v2 = number_Format(v.toString());
-                return v2;
-            };
+                    var v2 = number_Format(v.toString());
+                    return v2;
+                };
+            }
         }
         else if(type==="table")
         {
@@ -2015,6 +2022,300 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                 //sDom: "",
                 //oLanguage: "",
                 //language: ""
+            }
+        };
+    }
+
+    else if(type==="boxplot")
+    {
+        var thisChart = {
+            type: "cccBoxplotChart",
+            //name: "chartName",
+            priority: 5,
+            parameters: [],
+            executeAtStart: true,
+            //htmlObject: "chartContainer",
+            listeners: [],
+            chartDefinition:
+            {
+                //dataAccessId: "sql1",
+                //path: "/public/ITCR/Ejemplo/Prueba1.cda",
+                width: 500,
+                height: 300,
+                extensionPoints: [],
+                colors: [],
+                title: "title",
+                animate: false,
+                baseAxisGrid: true,
+                baseAxisOffset: 0,
+                baseAxisOverlappedLabelsMode: "hide",
+                baseAxisTicks: true,
+                baseAxisTitleFont: "12px sans-serif",
+                baseAxisTitleMargins: "0",
+                baseAxisTooltipAutoContent: "value",
+                baseAxisTooltipEnabled: true,
+                baseAxisVisible: true,
+                boxSizeRatio: 0.333,
+                clearSelectionMode: "emptySpaceClick",
+                clickable: false,
+                color2AxisColors: [],
+                color2AxisLegendClickMode: "toggleVisible",
+                color2AxisLegendVisible: true,
+                compatVersion: 2,
+                contentMargins: "0",
+                contentPaddings: "0",
+                crosstabMode: false,
+                ctrlSelectMode: true,
+                dataIgnoreMetadataLabels: false,
+                dataSeparator: "~",
+                groupedLabelSep: " ~ ",
+                hoverable: true,
+                ignoreNulls: true,
+                isMultiValued: false,
+                leafContentOverflow: "auto",
+                legend: true,
+                legendClickMode: "toggleVisible",
+                legendFont: "10px sans-serif",
+                legendItemPadding: "2.5",
+                legendMargins: "0",
+                legendMarkerSize: 15,
+                legendPaddings: "5",
+                legendPosition: "bottom",
+                legendTextMargin: 6,
+                legendVisible: true,
+                margins: "3",
+                measuresIndexes: [],
+                multiChartColumnsMax: 3,
+                multiChartIndexes: [],
+                multiChartOverflow: "grow",
+                multiChartSingleColFillsHeight: true,
+                multiChartSingleRowFillsHeight: true,
+                nullInterpolationMode: "none",
+                orientation: "vertical",
+                orthoAxisDomainRoundMode: "tick",
+                orthoAxisDomainScope: "global",
+                orthoAxisGrid: false,
+                orthoAxisMinorTicks: true,
+                orthoAxisOffset: 0,
+                orthoAxisOverlappedLabelsMode: "hide",
+                orthoAxisTicks: true,
+                orthoAxisTickUnitMax: "Infinity",
+                orthoAxisTickUnitMin: "0",
+                orthoAxisTitleFont: "12px sans-serif",
+                orthoAxisTitleMargins: "0",
+                orthoAxisVisible: true,
+                orthoAxisZeroLine: true,
+                paddings: "0",
+                plot2: true,
+                plot2AreasVisible: false,
+                plot2ColorAxis: 2,
+                plot2DotsVisible: true,
+                plot2LinesVisible: true,
+                plot2NullInterpolationMode: "none",
+                plot2ValuesFont: "10px sans-serif",
+                plot2ValuesMask: "{value}",
+                plot2ValuesVisible: false,
+                plotFrameVisible: true,
+                pointingMode: "near",
+                readers: [],
+                selectable: true,
+                seriesInRows: false,
+                smallContentMargins: "0",
+                smallContentPaddings: "0",
+                smallMargins: "2%",
+                smallPaddings: "0",
+                smallTitleFont: "14px sans-serif",
+                smallTitleMargins: "0",
+                smallTitlePaddings: "0",
+                smallTitlePosition: "top",
+                timeSeries: false,
+                timeSeriesFormat: "%Y-%m-%d",
+                titleFont: "14px sans-serif",
+                titleMargins: "0",
+                titlePaddings: "0",
+                titlePosition: "top",
+                tooltipEnabled: true,
+                tooltipFade: true,
+                tooltipFollowMouse: false,
+                tooltipHtml: true,
+                tooltipOpacity: 0.9
+            }
+        };
+    }
+
+    else if(type==="treemap")
+    {
+        var addTooltipLabels = function(dimension1Label, dimension2Label, valueLabel) 
+        {
+            thisChart.chartDefinition.dimensions = {
+                category: {label: dimension1Label},
+                category2: {label: dimension2Label},
+                size: {label: valueLabel}
+            };
+            return thisChart;
+        };
+        thisChart.addTooltipLabels = addTooltipLabels;
+        var thisChart = {
+            type: "cccTreemapChart",
+            //name: "chart_treemap",
+            priority: 5,
+            parameters: [],
+            executeAtStart: true,
+            //htmlObject: "col5",
+            listeners: [],
+            chartDefinition:
+            {
+                //dataAccessId: "mdx1",
+                //path: "/public/ITCR/Ejemplo/Prueba1.cda",
+                width: 500,
+                height: 300,
+                extensionPoints: [],
+                colors: [],
+                title: "title",
+                animate: true,
+                clearSelectionMode: "emptySpaceClick",
+                clickable: false,
+                compatVersion: 2,
+                contentMargins: "0",
+                contentPaddings: "0",
+                crosstabMode: false,
+                ctrlSelectMode: true,
+                dataIgnoreMetadataLabels: false,
+                dataSeparator: "~",
+                groupedLabelSep: " ~ ",
+                hoverable: false,
+                ignoreNulls: true,
+                isMultiValued: false,
+                legend: true,
+                legendClickMode: "toggleVisible",
+                legendFont: "10px sans-serif",
+                legendItemPadding: "2.5",
+                legendMargins: "0",
+                legendMarkerSize: 15,
+                legendPaddings: "5",
+                legendPosition: "bottom",
+                legendTextMargin: 6,
+                legendVisible: true,
+                margins: "3",
+                measuresIndexes: [],
+                multiChartColumnsMax: 3,
+                multiChartIndexes: [],
+                multiChartOverflow: "grow",
+                multiChartSingleColFillsHeight: true,
+                multiChartSingleRowFillsHeight: true,
+                orientation: "vertical",
+                paddings: "0",
+                pointingMode: "near",
+                readers: [],
+                rootCategoryLabel: "All",
+                selectable: false,
+                seriesInRows: false,
+                sizeAxisUseAbs: false,
+                smallContentMargins: "0",
+                smallContentPaddings: "0",
+                smallMargins: "2%",
+                smallPaddings: "0",
+                smallTitleFont: "14px sans-serif",
+                smallTitleMargins: "0",
+                smallTitlePaddings: "0",
+                smallTitlePosition: "top",
+                titleFont: "14px sans-serif",
+                titleMargins: "0",
+                titlePaddings: "0",
+                titlePosition: "top",
+                tooltipEnabled: true,
+                tooltipFade: true,
+                tooltipFollowMouse: false,
+                tooltipHtml: true,
+                tooltipOpacity: 0.9,
+                valuesFont: "10px sans-serif",
+                valuesOverflow: "hide"
+            }
+        };
+    }
+
+    else if(type==="heatgrid")
+    {
+        var thisChart = {
+            type: "cccHeatGridChart",
+            //name: "render_chart_heatGrid_default",
+            priority: 5,
+            parameters: [],
+            executeAtStart: true,
+            //htmlObject: "col9",
+            listeners: [],
+            chartDefinition:
+            {
+                //dataAccessId: "mdx1_headgrid",
+                //path: "/public/ITCR/Ejemplo/Prueba1.cda",
+                width: 500,
+                height: 300,
+                extensionPoints: [],
+                colors: ["#005CA7", "#fff", "#FFC20F"],
+                animate: true,
+                baseAxisComposite: false,
+                baseAxisGrid: false,
+                baseAxisOffset: 0,
+                baseAxisOverlappedLabelsMode: "hide",
+                baseAxisTicks: true,
+                baseAxisTitleFont: "12px sans-serif",
+                baseAxisTitleMargins: "0",
+                baseAxisTooltipAutoContent: "value",
+                baseAxisTooltipEnabled: true,
+                baseAxisVisible: true,
+                clearSelectionMode: "emptySpaceClick",
+                clickable: false,
+                colorDomain: [],
+                colorMissing: "#333333",
+                colorNormByCategory: false,
+                colorScaleType: "linear",
+                colorUseAbs: false,
+                compatVersion: 2,
+                contentMargins: "0",
+                contentPaddings: "0",
+                crosstabMode: true,
+                ctrlSelectMode: true,
+                dataIgnoreMetadataLabels: false,
+                dataSeparator: "~",
+                groupedLabelSep: " ~ ",
+                hoverable: false,
+                ignoreNulls: true,
+                isMultiValued: false,
+                leafContentOverflow: "auto",
+                margins: "3",
+                measuresIndexes: [],
+                nullShape: "cross",
+                orientation: "vertical",
+                orthoAxisComposite: false,
+                orthoAxisGrid: false,
+                orthoAxisOffset: 0,
+                orthoAxisOverlappedLabelsMode: "hide",
+                orthoAxisTicks: true,
+                orthoAxisTitleFont: "12px sans-serif",
+                orthoAxisTitleMargins: "0",
+                orthoAxisTooltipAutoContent: "value",
+                orthoAxisTooltipEnabled: true,
+                orthoAxisVisible: true,
+                paddings: "0",
+                plotFrameVisible: true,
+                pointingMode: "near",
+                readers: [],
+                selectable: false,
+                seriesInRows: false,
+                sizeAxisUseAbs: false,
+                timeSeries: false,
+                timeSeriesFormat: "%Y-%m-%d",
+                titleFont: "14px sans-serif",
+                titleMargins: "0",
+                titlePaddings: "0",
+                titlePosition: "top",
+                tooltipEnabled: true,
+                tooltipFade: true,
+                tooltipFollowMouse: false,
+                tooltipHtml: true,
+                tooltipOpacity: 0.9,
+                useShapes: false,
+                valuesFont: "10px sans-serif"
             }
         };
     }
