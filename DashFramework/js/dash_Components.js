@@ -536,7 +536,6 @@ var extPoints = [["noDataMessage_text", function(){return 'Informaci\xf3n no dis
         }
         return value;
     }
-
     function getFirstNumberPosition(value)
     {
         var position = -1;
@@ -551,6 +550,22 @@ var extPoints = [["noDataMessage_text", function(){return 'Informaci\xf3n no dis
             counter++
         }
         return position;
+    }
+
+    function getFirstLetterPosition(value)
+    {
+        var valueSize = value.length;
+        var counter  = 0;
+        while(valueSize > counter)
+        {
+            var isNumber = $.isNumeric(value[counter]);
+            if (!isNumber)
+            {
+                return counter;
+            }
+            counter++
+        }
+        return -1;
     }
 
     function addPoints(value)
@@ -584,91 +599,93 @@ var extPoints = [["noDataMessage_text", function(){return 'Informaci\xf3n no dis
 
     function format_number(value, type)
     {
-        var newValue = "";
-        var pointMatcher = value.match("\\.");
-        var integers = "";
-        var integers_label = "";
-        var integers_digits = "";
-        var decimals = "";
-        var firstNumberPosition;
-        if(value == "")
-        {
-            value = "sin valor";
-            return value;
-        }
-        if(pointMatcher == null)
-        {
-            integers = value;
-            integers = deleteCommas(integers);
-        }
-        else if (pointMatcher.length == 1)
-        {
-            var tempArray = value.split("\.");
-            integers = tempArray[0];
-            decimals = tempArray[1];
-            integers = deleteCommas(integers);
-        }
-        else
-        {
-            alert("formato desconocido");
-        }
-        firstNumberPosition = getFirstNumberPosition(value);
+        //busca primer numero
+        var firstNumberPosition = getFirstNumberPosition(value);
+        //si el resultado es -1 entonces no encontro ningun numero
         if (firstNumberPosition != -1)
         {
-            integers_label = integers.substr(0, firstNumberPosition);
-            integers_digits = integers.substr(firstNumberPosition);
-            integers_digits = addPoints(integers_digits);
-            if((decimals == "") && (type != "formattedText"))
+            var newValue = "";
+            var pointMatcher = value.match("\\.");
+            var integers = "";
+            var integers_label = "";
+            var integers_digits = "";
+            var decimals = "";
+            var decimals_label = "";
+            var decimals_digits = "";
+            var firstNumberPosition;
+            //si no hay punto entonces asumimos que unicamente hay enteros
+            if(pointMatcher == null)
             {
-                newValue = integers_label + integers_digits + ",00";
+                integers = value;
+                integers = deleteCommas(integers);
             }
-            else if(type == "formattedText")
+            //si tiene solo un punto asumimos que tiene enteros y decimales
+            else if (pointMatcher.length == 1)
             {
-                newValue = integers_label + integers_digits;
+                //separamos el valor en enteros y decimales, a los enteros les quitamos las comas (si las hay)
+                var tempArray = value.split("\.");
+                integers = tempArray[0];
+                decimals = tempArray[1];
+                integers = deleteCommas(integers);
             }
+            //si existe mas de un punto lo tomaremos como un un valor indefinido y lo devolveremos como esta
             else
             {
-                var decimalSize = decimals.length;
-                var lastdecimalValue = $.isNumeric(decimals[decimalSize-1]);
-                if(decimalSize > 2)
+                console.log("formato desconocido en: " + value);
+                return value;
+            } 
+                //separamos la etiqueta ($ o % o lo que sea) que pueda estar al inicio del entero y le ponemos los puntos corresponientes
+                integers_label = integers.substr(0, firstNumberPosition);
+                integers_digits = integers.substr(firstNumberPosition);
+                integers_digits = addPoints(integers_digits);
+                // si es de tipo "formattedText", solo agregamos el entero
+                if(type == "formattedText")
                 {
-                    if (!lastdecimalValue)
-                    {
-                        newValue = integers_label + integers_digits + "," + decimals[0] + decimals[1]+ decimals[decimalSize-1];
-                    }
-                    else
-                    {
-                        newValue = integers_label + integers_digits + "," + decimals[0] + decimals[1];
-                    }
+                    newValue = integers_label + integers_digits;
                 }
-                else if(decimalSize == 2)
+                //si NO hay decimales, entonces agregamos al valor de los enteros un ",00"
+                else if(decimals == "")
                 {
-                    if (!lastdecimalValue)
-                    {
-                        newValue = integers_label + integers_digits + "," + decimals[0] + "0" + decimals[1];
-                    }
-                    else
-                    {
-                        newValue = integers_label + integers_digits + "," + decimals[0] + decimals[1];
-                    }
+                    newValue = integers_label + integers_digits + ",00";
                 }
                 else
                 {
-                    if (!lastdecimalValue)
+                    //tomamos el tamano de los decimales
+                    var firstLetterPosition = getFirstLetterPosition(decimals);
+                    if (firstLetterPosition == 0)
                     {
-                        newValue = integers_label + integers_digits + ",00" + decimals[0];
+                        decimals_label = decimals;
+                    }
+                    else if(firstLetterPosition != -1)
+                    {
+                        decimals_digits = decimals.substr(0, firstLetterPosition);
+                        decimals_label = decimals.substr(firstLetterPosition);
                     }
                     else
                     {
-                        newValue = integers_label + integers_digits + "," + decimals[0] + "0";
+                        decimals_digits = decimals;
+                    }
+                    var decimals_digits_Size = decimals_digits.length;
+                    if(decimals_digits_Size >= 2)
+                    {
+                        newValue = integers_label + integers_digits + "," + decimals_digits[0] + decimals_digits[1] + decimals_label;
+                    }
+                    else if (decimals_digits_Size == 1)
+                    {
+                        newValue = integers_label + integers_digits + "," + decimals_digits[0] + "0" + decimals_label;
+                    }
+                    else
+                    {
+                        newValue = integers_label + integers_digits + ",00" + decimals_label;
                     }
                 }
-            }
-            return newValue;
+                return newValue;
+      
         }
+        //si no hay numero mande el valor como esta
         else
         {
-            alert("formato desconocido");
+            return value;
         }
     }
 
