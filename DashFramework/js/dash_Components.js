@@ -1080,7 +1080,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
         /* image section */
             var htmlPanelCode = "<li role='separator' class='divider'></li>";
             htmlPanelCode += "<li class='dropdown-header'>Opciones de Descarga</li>";
-            if(type!="table")
+            if((type!="table")||(type!="treemap"))
             {
                 htmlPanelCode += "<li><a onclick='printDivSVG("+chartName+")' href='#'><i></i> Formato JPG (imagen)</a></li>";
             }
