@@ -224,11 +224,7 @@ function addFooterHtmlCode()
 	htmlCode +=		"						<p align='justify'>";
 	htmlCode +=		"							Oficina de Planificaci&oacute;n Institucional: 2550-2234 ";
 	htmlCode +=		"							<br>";
-	htmlCode +=		"							Cristian Campos Ag&uuml;ero: crcampos@itcr.ac.cr ";
-	htmlCode +=		"							<br>";
-	htmlCode +=		"							Xinia Alfaro Espinoza: xalfaro@itcr.ac.cr ";
-	htmlCode +=		"							<br>";
-	htmlCode +=		"							Jas&oacute;n Serrano Quir&oacute;s: jaserrano@itcr.ac.cr. ";
+	htmlCode +=		"							Correo: sigi@itcr.ac.cr ";
 	htmlCode +=		"						</p>";
 	htmlCode +=		"					</h6>";
 	htmlCode +=		"				</div>";

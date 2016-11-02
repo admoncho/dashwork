@@ -497,6 +497,7 @@ var colorSet = ["#0585d0", "#68c3ef", "#33346a", "#1e632a", "#94ac22", "#d40521"
 var parameterArray = [];
 var selectArray = [];
 var buttonArray = [];
+var buttonTempArray = [];
 var chartArray = [];
 var raphaelChartArray = [];
 var queryParameterArray = [];
@@ -506,12 +507,12 @@ var extPoints = [["noDataMessage_text", function(){return 'Informaci\xf3n no dis
 
 
 /** funciones de formato de datos generales **/
-
+    /*
     Dashboards.configLanguage('en-US', 
     {
         number: 
         {
-            mask: '#,0.##',
+            mask: '#,0.##', //'#,0.#0'
             style: 
             {
                 integerPad: '0',
@@ -525,7 +526,7 @@ var extPoints = [["noDataMessage_text", function(){return 'Informaci\xf3n no dis
             }
         }
     }); 
-
+    */
     function deleteCommas(value)
     {
         var commaMatch = value.search("\\,");
@@ -597,8 +598,14 @@ var extPoints = [["noDataMessage_text", function(){return 'Informaci\xf3n no dis
         }
     }
 
+    //numeric (con decimales) pasa transformar 123,123,123,123.4545 a 123.123.123.123.45
+    //trendArrow (porcentaje para tablas) pasa transformar 123,123,123,123.4545 a 123.123.123.123.45 -->
+    //formattedText (sin decimales) pasa transformar 123,123,123,123.4545 a 123.123.123.123
+    //percentage para transformar de 0.67232387 a 67%
+    //dinamic (para los orto y los format) 1200 a 1.200     1200.3434 a 1.200.34
     function format_number(value, type)
     {
+        value = ""+value;
         //busca primer numero
         var firstNumberPosition = getFirstNumberPosition(value);
         //si el resultado es -1 entonces no encontro ningun numero
@@ -614,6 +621,11 @@ var extPoints = [["noDataMessage_text", function(){return 'Informaci\xf3n no dis
             var decimals_digits = "";
             var firstNumberPosition;
             //si no hay punto entonces asumimos que unicamente hay enteros
+            if((type == "percentage")&&(value == 1))
+            {
+                newValue = "100%";
+                return newValue;
+            }
             if(pointMatcher == null)
             {
                 integers = value;
@@ -625,8 +637,33 @@ var extPoints = [["noDataMessage_text", function(){return 'Informaci\xf3n no dis
                 //separamos el valor en enteros y decimales, a los enteros les quitamos las comas (si las hay)
                 var tempArray = value.split("\.");
                 integers = tempArray[0];
+                var percentageIntegers = "";
+                if(integers != 0)
+                {
+                    percentageIntegers = integers;
+                }
                 decimals = tempArray[1];
-                integers = deleteCommas(integers);
+                if(type == "percentage")
+                {
+                    var decimals_size = decimals.length;
+                    if(decimals_size >= 4)
+                    {
+                        if(decimals[0] != "0")
+                        {
+                            newValue = percentageIntegers + decimals[0]+decimals[1]+","+decimals[2]+decimals[3]+"%";
+                        }
+                        else
+                        {
+                            newValue = percentageIntegers + decimals[1]+","+decimals[2]+decimals[3]+"%";
+                        }
+                    }
+                    return newValue;
+                }
+                else
+                {
+                    integers = deleteCommas(integers);   
+                }
+                
             }
             //si existe mas de un punto lo tomaremos como un un valor indefinido y lo devolveremos como esta
             else
@@ -646,7 +683,14 @@ var extPoints = [["noDataMessage_text", function(){return 'Informaci\xf3n no dis
                 //si NO hay decimales, entonces agregamos al valor de los enteros un ",00"
                 else if(decimals == "")
                 {
-                    newValue = integers_label + integers_digits + ",00";
+                    if(type == "dinamic")
+                    {
+                        newValue = integers_label + integers_digits;
+                    }
+                    else
+                    {
+                        newValue = integers_label + integers_digits + ",00";
+                    }
                 }
                 else
                 {
@@ -691,60 +735,18 @@ var extPoints = [["noDataMessage_text", function(){return 'Informaci\xf3n no dis
 
     var formatPercentage = function(val) 
     {
-        var valor =""+val;
-        var buscador;
-        buscador = valor.search("\.");
-        if(buscador != -1)
+        var valueNaN = isNaN(val);
+        var valor;
+        if (valueNaN)
         {
-            valor = valor.replace("\.", "\,");
-        }
-        var todo = valor.split("\,");
-        var unidades = todo[0];
-        var totalUnidades = unidades.length;
-        var listaLetras = unidades.split('');
-        var residuo = totalUnidades%3;
-        var cociente = (totalUnidades-residuo)/3;
-        var nuevasUnidades = "";
-        if(cociente > 0)
-        {
-            var temp = 0;
-            if(residuo > 0)
-            {
-                while(temp < residuo)
-                {
-                    nuevasUnidades += listaLetras[temp];
-                    temp++;
-                }
-                nuevasUnidades += ".";
-            }
-            if (totalUnidades-residuo > 3)
-            {
-                var contadorTres = 3;
-                while(temp < totalUnidades)
-                {
-                    nuevasUnidades += listaLetras[temp];
-                    if((contadorTres == 1)&&((temp+1) != totalUnidades))
-                    {
-                        nuevasUnidades += ".";
-                        contadorTres = 3;
-                    }
-                    else
-                    {
-                        contadorTres--;
-                    }
-                    temp++;
-                }
-            }
-            if (todo.length == 2)
-            {
-                nuevasUnidades += ","+todo[1];
-            }
-            return nuevasUnidades+"%";
+            valor = "-";
         }
         else
         {
-            return valor+"%";
+            valor =""+val;
+            valor  = format_number(valor, "numeric") + "%";
         }
+        return valor;
     };
 /** fin de funciones de formato de datos generales **/
 
@@ -851,7 +853,7 @@ function buttonDefault(buttontName, buttonLabel, listenersArray)
         label: buttonLabel,
         htmlObject: buttontName,
         buttonStyle: "themeroller",
-        executeAtStart: true,
+        executeAtStart: false,
         listeners: listenersArray,
         preExecution: function() {},
         postExecution: function() {},
@@ -1135,6 +1137,22 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
         return thisChart;
     };
 
+    var tooltipLabelLeft = "";
+    var tooltipLabelRight = ""; 
+    var addTooltipValueLabels = function(labelLeft, labelRight)
+    {
+        thisChart.tooltipLabelLeft = labelLeft;
+        thisChart.tooltipLabelRight = labelRight;
+    }
+    
+    var ortoAxisLabelRight = "";
+    var ortoAxisLabelLeft = "";
+    var addOrtoAxisLabels = function (leftlabel, rightlabel)
+    {
+        thisChart.ortoAxisLabelRight = rightlabel;
+        thisChart.ortoAxisLabelLeft = leftlabel;
+    }
+
     function standardProperties ()
     {
         thisChart.name = name;
@@ -1144,6 +1162,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
         thisChart.addPanel = addPanel; 
         thisChart.setWidth = setWidth;
         thisChart.addToPanel = addToPanel;
+
         if((type==="gauge")||(type==="funnel"))
         {
             thisChart.queryDefinition.dataAccessId = dataAccessId;
@@ -1151,6 +1170,14 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
         }
         else
         {
+            thisChart.tooltipLabelLeft = tooltipLabelLeft;
+            thisChart.tooltipLabelRight = tooltipLabelRight;
+            thisChart.addTooltipValueLabels = addTooltipValueLabels;
+            thisChart.chartDefinition.valueFormat =  function f(value){
+                value = format_number(value, "dinamic"); 
+                return thisChart.tooltipLabelLeft + value + thisChart.tooltipLabelRight;
+            };
+
             thisChart.chartDefinition.dataAccessId = dataAccessId;
             thisChart.chartDefinition.path = path;
             
@@ -1203,55 +1230,19 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                     this.resizeHandlerAttached = true;
                 }
             };
-            if(type!=="heatgrid")
-            {
-                thisChart.chartDefinition.orthoAxisTickFormatter = function f(v) 
-                { 
-                    function number_Format(numero)
-                    {
-                        // Variable que contendra el resultado final
-                        var resultado = "";
-                 
-                        // Si el numero empieza por el valor "-" (numero negativo)
-                        if(numero[0]=="-")
-                        {
-                            // Cogemos el numero eliminando los posibles puntos que tenga, y sin
-                            // el signo negativo
-                            nuevoNumero=numero.replace(/\./g,'').substring(1);
-                        }
-                        else
-                        {
-                            // Cogemos el numero eliminando los posibles puntos que tenga
-                            nuevoNumero=numero.replace(/\./g,'');
-                        }
-                 
-                        // Si tiene decimales, se los quitamos al numero
-                        if(numero.indexOf(",")>=0)
-                            nuevoNumero=nuevoNumero.substring(0,nuevoNumero.indexOf(","));
-                 
-                        // Ponemos un punto cada 3 caracteres
-                        for (var j, i = nuevoNumero.length - 1, j = 0; i >= 0; i--, j++)
-                            resultado = nuevoNumero.charAt(i) + ((j > 0) && (j % 3 == 0)? ".": "") + resultado;
-                 
-                        // Si tiene decimales, se lo añadimos al numero una vez forateado con 
-                        // los separadores de miles
-                        if(numero.indexOf(",")>=0)
-                            resultado+=numero.substring(numero.indexOf(","));
-                 
-                        if(numero[0]=="-")
-                        {
-                            // Devolvemos el valor añadiendo al inicio el signo negativo
-                            return "-"+resultado;
-                        }
-                        else
-                        {
-                            return resultado;
-                        }
-                    }
-                    var v2 = number_Format(v.toString());
-                    return v2;
-                };
-            }
+            
+            thisChart.chartDefinition.percentValueFormat = function(v) { 
+                v = format_number(v, "percentage"); 
+                return v; 
+            };
+
+            thisChart.ortoAxisLabelRight = ortoAxisLabelRight;
+            thisChart.ortoAxisLabelLeft = ortoAxisLabelLeft;
+            thisChart.chartDefinition.orthoAxisTickFormatter = function (v) {
+                v = format_number(v, "dinamic");
+                return thisChart.ortoAxisLabelLeft + v + thisChart.ortoAxisLabelRight;
+            };
+            thisChart.addOrtoAxisLabels = addOrtoAxisLabels;
         }
         else if(type==="table")
         {
@@ -1274,7 +1265,9 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                 //    thisChart.formatted = true;
                     this.ph.find('td.formattedText').each(function() {
                         var valorElemento2 = $(this).text();
-                        valorElemento2 = format_number(valorElemento2, "formattedText");
+                        //valorElemento2 = format_number(valorElemento2, "formattedText");
+                        valorElemento2 = format_number(valorElemento2, "dinamic");
+                        
                         $(this).html(valorElemento2);
                     });
                     this.ph.find('td.numeric').each(function() {
@@ -1283,13 +1276,15 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                         {
                             $(this).addClass( "formattedAlready" );
                             var valorElemento2 = $(this).text();
-                            valorElemento2 = format_number(valorElemento2, "numeric");
+                            //valorElemento2 = format_number(valorElemento2, "numeric");
+                            valorElemento2 = format_number(valorElemento2, "dinamic");
                             $(this).html(valorElemento2);
                         }
                     });
                     this.ph.find('.trendArrow .value').each(function() {
                         var valorElemento = $(this).text();
-                        valorElemento = format_number(valorElemento, "trendArrow");
+                        //valorElemento = format_number(valorElemento, "trendArrow");
+                        valorElemento = format_number(valorElemento, "dinamic");
                         $(this).html(valorElemento);
                     });
                 //}
@@ -1407,6 +1402,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                 orthoAxisGrid: true,
                 orthoAxisMinorTicks: true,
                 orthoAxisOffset: 0,
+                orthoAxisOriginIsZero : true,
                 orthoAxisOverlappedLabelsMode: "hide",
                 orthoAxisTicks: true,
                 orthoAxisTitle: "",
@@ -1560,6 +1556,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                 orthoAxisGrid: true,
                 orthoAxisMinorTicks: true,
                 orthoAxisOffset: 0,
+                orthoAxisOriginIsZero : true,
                 orthoAxisOverlappedLabelsMode: "hide",
                 orthoAxisTicks: true,
                 orthoAxisTitle: "leftTitle",
@@ -1856,6 +1853,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                 orthoAxisGrid: true,
                 orthoAxisMinorTicks: true,
                 orthoAxisOffset: 0,
+                orthoAxisOriginIsZero : true,
                 orthoAxisOverlappedLabelsMode: "hide",
                 //orthoAxisTickFormatter: function() {},
                 orthoAxisTicks: true,
@@ -1983,7 +1981,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
             }
             else if(styleName === "simple")
             {
-                thisChart.chartDefinition.colFormats = ["%.2f","%.2f"];
+                //thisChart.chartDefinition.colFormats = ["%.2f","%.2f"];
                 thisChart.chartDefinition.paginate = false;
                 thisChart.chartDefinition.paginationType = "two_button";
                 thisChart.chartDefinition.filter = false;
@@ -1991,6 +1989,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                 thisChart.chartDefinition.sort = false;
                 thisChart.chartDefinition.lengthChange = false;
                 thisChart.chartDefinition.tableStyle = "bootstrap";
+                thisChart.chartDefinition.colTypes= ["numeric", "numeric"];
             }
             return thisChart;
         }
@@ -2033,7 +2032,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                 sort: true,
                 sortBy: [],
                 //displayLength: 10,
-                lengthChange: true,
+                lengthChange: false,
                 tableStyle: "bootstrap",
                 //drawCallback: function() { return ""; },
                 //sDom: "",
@@ -2114,6 +2113,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                 orthoAxisGrid: false,
                 orthoAxisMinorTicks: true,
                 orthoAxisOffset: 0,
+                orthoAxisOriginIsZero : true,
                 orthoAxisOverlappedLabelsMode: "hide",
                 orthoAxisTicks: true,
                 orthoAxisTickUnitMax: "Infinity",
@@ -2306,6 +2306,7 @@ function newChart(chartName, type, queryName, parameterEstructureArray, ArrayLis
                 orthoAxisComposite: false,
                 orthoAxisGrid: false,
                 orthoAxisOffset: 0,
+                orthoAxisOriginIsZero : true,
                 orthoAxisOverlappedLabelsMode: "hide",
                 orthoAxisTicks: true,
                 orthoAxisTitleFont: "12px sans-serif",
@@ -2603,19 +2604,18 @@ function newButton(buttontName, buttonLabel, parameterEstructureArray)
         //label: buttonLabel,
         //htmlObject: buttontName,
         buttonStyle: "themeroller",
-        executeAtStart: true,
+        executeAtStart: false,
         //listeners: listenerArray,
         preExecution: function() {},
         postExecution: function() {},
         //tooltip: "",
         //actionParameters: [["",""],["",""]],
         //expression: function() {},
-        actionDefinition:  {
-
-        }
+        actionDefinition:  {}
     };
     standardProperties();
-    buttonArray.push(buttonComponent);
+    buttonTempArray.push(buttonComponent);
+    chartArray.push(buttonComponent);
     return buttonComponent;
 }
 
@@ -2639,7 +2639,7 @@ function newQueryComponent(queryComponentName, parameterEstructureArray, queryNa
             var labelID = "#"+queryComponent.htmlObject;
             var labelUbication = $(labelID);
             var valorElemento = labelUbication.text();
-            valorElemento = format_number(valorElemento, "");
+            valorElemento = format_number(valorElemento, "dinamic");
             labelUbication.html(valorElemento);
         };
         return queryComponent;
@@ -2705,6 +2705,234 @@ function newRaphaelComponent(chartName, queryName, parameterEstructureArray, Arr
     var dataAccessId = queryName;
     var path = thisDashPath+thisDashName+".cda";
 
+    var gageLabelLeft = "";
+    thisChart.gageLabelLeft = gageLabelLeft;
+
+    var gageLabelRight = "%";
+    thisChart.gageLabelRight =  gageLabelRight;
+
+    var gageLabelLeft1 = "";
+    thisChart.gageLabelLeft1 = gageLabelLeft1;
+
+    var gageLabelRight1 = "%";
+    thisChart.gageLabelRight1 =  gageLabelRight1;
+
+    var gageLabelLeft2 = "";
+    thisChart.gageLabelLeft2 = gageLabelLeft2;
+
+    var gageLabelRight2 = "%";
+    thisChart.gageLabelRight2 =  gageLabelRight2;
+
+    var addGageValueLabels = function(labelLeft, labelRight)
+    {
+        thisChart.gageLabelLeft = labelLeft;
+        thisChart.gageLabelRight = labelRight;
+    }
+    thisChart.addGageValueLabels = addGageValueLabels;
+
+    var addGageValueLabels1 = function(labelLeft, labelRight)
+    {
+        thisChart.gageLabelLeft1 = labelLeft;
+        thisChart.gageLabelRight1 = labelRight;
+    }
+    thisChart.addGageValueLabels1 = addGageValueLabels1;
+
+    var addGageValueLabels2 = function(labelLeft, labelRight)
+    {
+        thisChart.gageLabelLeft2 = labelLeft;
+        thisChart.gageLabelRight2 = labelRight;
+    }
+    thisChart.addGageValueLabels2 = addGageValueLabels2;
+
+    var gageFormat = function(val) 
+    {
+        var valueNaN = isNaN(val);
+        var valor;
+        if (valueNaN)
+        {
+            valor = "-";
+        }
+        else
+        {
+            var gaugeInstance = thisChart.gageComponentObject;
+            var gaugeInstanceIsObject = typeof gaugeInstance === 'object';
+            if(gaugeInstanceIsObject)
+            {
+                gaugeInstance.hideMinMax = false;
+                thisChart.gageComponentObject = gaugeInstance;
+                valor  = thisChart.gageLabelLeft + format_number(val, "numeric") + thisChart.gageLabelRight;
+            }
+        }
+        return valor;
+    };
+    thisChart.gageFormat = gageFormat;
+
+    var gageFormat1 = function(val) 
+    {
+        var valueNaN = isNaN(val);
+        var valor;
+        if (valueNaN)
+        {
+            valor = "-";
+        }
+        else
+        {
+            var gaugeInstance = thisChart.gageComponentObject1;
+            var gaugeInstanceIsObject = typeof gaugeInstance === 'object';
+            if(gaugeInstanceIsObject)
+            {
+                gaugeInstance.hideMinMax = false;
+                thisChart.gageComponentObject1 = gaugeInstance;
+                valor  = thisChart.gageLabelLeft1 + format_number(val, "numeric") + thisChart.gageLabelRight1;
+            }
+        }
+        return valor;
+    };
+    thisChart.gageFormat1 = gageFormat1;
+
+    var gageFormat2 = function(val) 
+    {
+        var valueNaN = isNaN(val);
+        var valor;
+        if (valueNaN)
+        {
+            valor = "-";
+        }
+        else
+        {
+            var gaugeInstance = thisChart.gageComponentObject2;
+            var gaugeInstanceIsObject = typeof gaugeInstance === 'object';
+            if(gaugeInstanceIsObject)
+            {
+                gaugeInstance.hideMinMax = false;
+                thisChart.gageComponentObject2 = gaugeInstance;
+                valor  = thisChart.gageLabelLeft2 + format_number(val, "numeric") + thisChart.gageLabelRight2;
+            }
+        }
+        return valor;
+    };
+    thisChart.gageFormat2 = gageFormat2;
+
+    var queryComponent = newQueryComponent("queryComponent_"+chartName, parameterEstructureArray, queryName);
+    thisChart.queryComponent = queryComponent;
+
+    var queryComponentResultName = thisChart.queryComponent.resultvar;
+    thisChart.queryComponentResultName = queryComponentResultName;
+
+    var queryComponentValue;
+    thisChart.queryComponentValue = queryComponentValue;
+
+    var hideMinMax = true;
+    thisChart.hideMinMax = hideMinMax;
+
+    var hideMinMax1 = true;
+    thisChart.hideMinMax1 = hideMinMax1;
+
+    var hideMinMax2 = true;
+    thisChart.hideMinMax2 = hideMinMax2;
+
+    var defaultProperties = {};
+    thisChart.defaultProperties = defaultProperties;
+
+    var defaultProperties1 = {};
+    thisChart.defaultProperties1 = defaultProperties1;
+
+    var defaultProperties2 = {};
+    thisChart.defaultProperties2 = defaultProperties2;
+
+    var addDefaultProperties = function(gageProperties)
+    {
+        thisChart.defaultProperties = gageProperties;
+        var gaugeInstance = thisChart.gageComponentObject;
+        var gaugeInstanceIsObject = typeof gaugeInstance === 'object';
+        if(gaugeInstanceIsObject)
+        {
+            gaugeInstance.defaults = thisChart.defaultProperties;
+        }
+    }
+    thisChart.addDefaultProperties = addDefaultProperties;
+
+    var addDefaultProperties1 = function(gageProperties)
+    {
+        thisChart.defaultProperties1 = gageProperties;
+        var gaugeInstance = thisChart.gageComponentObject1;
+        var gaugeInstanceIsObject = typeof gaugeInstance === 'object';
+        if(gaugeInstanceIsObject)
+        {
+            gaugeInstance.defaults = thisChart.defaultProperties1;
+        }
+    }
+    thisChart.addDefaultProperties1 = addDefaultProperties1;
+
+    var addDefaultProperties2 = function(gageProperties)
+    {
+        thisChart.defaultProperties2 = gageProperties;
+        var gaugeInstance = thisChart.gageComponentObject2;
+        var gaugeInstanceIsObject = typeof gaugeInstance === 'object';
+        if(gaugeInstanceIsObject)
+        {
+            gaugeInstance.defaults = thisChart.defaultProperties2;
+        }
+    }
+    thisChart.addDefaultProperties2 = addDefaultProperties2;
+
+    var gageComponent;
+    thisChart.gageComponent = gageComponent;
+
+    var gageComponentObject = {
+        id: chartName,
+        value: thisChart.queryComponentValue,
+        title: "",
+        min: 0,
+        max: 100,
+        relativeGaugeSize: true,
+        symbol: "%",
+        donut: false,
+        levelColors: ["#FF0000", "#FFFF00", "#008000"],
+        textRenderer: thisChart.gageFormat,
+        hideMinMax: thisChart.hideMinMax,
+        defaults: thisChart.defaultProperties 
+    };
+    thisChart.gageComponentObject = gageComponentObject;
+
+    var gageComponent1;
+    thisChart.gageComponent1 = gageComponent1;
+
+    var gageComponentObject1 = {
+        id: chartName,
+        value: thisChart.queryComponentValue,
+        title: "",
+        min: 0,
+        max: 100,
+        relativeGaugeSize: true,
+        symbol: "%",
+        donut: false,
+        levelColors: ["#FF0000", "#FFFF00", "#008000"],
+        textRenderer: thisChart.gageFormat1,
+        hideMinMax: thisChart.hideMinMax1,
+        defaults: thisChart.defaultProperties1 
+    };
+    thisChart.gageComponentObject1 = gageComponentObject1;
+
+    var gageComponent2;
+    thisChart.gageComponent2 = gageComponent2;
+
+    var gageComponentObject2 = {
+        id: chartName+"_2",
+        value: thisChart.queryComponentValue,
+        title: "",
+        min: 0,
+        max: 100,
+        relativeGaugeSize: true,
+        symbol: "%",
+        donut: false,
+        levelColors: ["#FF0000", "#FFFF00", "#008000"],
+        textRenderer: thisChart.gageFormat2,
+        hideMinMax: thisChart.hideMinMax2,
+        defaults: thisChart.defaultProperties2 
+    };
+    thisChart.gageComponentObject2 = gageComponentObject2;
+
     var addPanel = function(titlePanel, generalInfo, idPanelFatherContainer, height, mdSize, lgSize) 
     {
         addPanelHtmlCode(titlePanel, generalInfo, chartName, idPanelFatherContainer, mdSize, lgSize, "default");
@@ -2731,124 +2959,9 @@ function newRaphaelComponent(chartName, queryName, parameterEstructureArray, Arr
 
     var setStyle = function(styleName)
     {
+
         return thisChart;
     }
-
-    var format = function(val) 
-    {
-        var valor =""+val;
-        var buscador;
-        buscador = valor.search("\.");
-        if(buscador != -1)
-        {
-            valor = valor.replace("\.", "\,");
-        }
-        var todo = valor.split("\,");
-        var unidades = todo[0];
-        var totalUnidades = unidades.length;
-        var listaLetras = unidades.split('');
-        var residuo = totalUnidades%3;
-        var cociente = (totalUnidades-residuo)/3;
-        var nuevasUnidades = "";
-        if(cociente > 0)
-        {
-            var temp = 0;
-            if(residuo > 0)
-            {
-                while(temp < residuo)
-                {
-                    nuevasUnidades += listaLetras[temp];
-                    temp++;
-                }
-                nuevasUnidades += ".";
-            }
-            if (totalUnidades-residuo > 3)
-            {
-                var contadorTres = 3;
-                while(temp < totalUnidades)
-                {
-                    nuevasUnidades += listaLetras[temp];
-                    if((contadorTres == 1)&&((temp+1) != totalUnidades))
-                    {
-                        nuevasUnidades += ".";
-                        contadorTres = 3;
-                    }
-                    else
-                    {
-                        contadorTres--;
-                    }
-                    temp++;
-                }
-            }
-            if (todo.length == 2)
-            {
-                nuevasUnidades += ","+todo[1];
-            }
-            return nuevasUnidades;
-        }
-        else
-        {
-            return valor;
-        }
-    };
-
-    var formatPercentage = function(val) 
-    {
-        var valor =""+val;
-        var buscador;
-        buscador = valor.search("\.");
-        if(buscador != -1)
-        {
-            valor = valor.replace("\.", "\,");
-        }
-        var todo = valor.split("\,");
-        var unidades = todo[0];
-        var totalUnidades = unidades.length;
-        var listaLetras = unidades.split('');
-        var residuo = totalUnidades%3;
-        var cociente = (totalUnidades-residuo)/3;
-        var nuevasUnidades = "";
-        if(cociente > 0)
-        {
-            var temp = 0;
-            if(residuo > 0)
-            {
-                while(temp < residuo)
-                {
-                    nuevasUnidades += listaLetras[temp];
-                    temp++;
-                }
-                nuevasUnidades += ".";
-            }
-            if (totalUnidades-residuo > 3)
-            {
-                var contadorTres = 3;
-                while(temp < totalUnidades)
-                {
-                    nuevasUnidades += listaLetras[temp];
-                    if((contadorTres == 1)&&((temp+1) != totalUnidades))
-                    {
-                        nuevasUnidades += ".";
-                        contadorTres = 3;
-                    }
-                    else
-                    {
-                        contadorTres--;
-                    }
-                    temp++;
-                }
-            }
-            if (todo.length == 2)
-            {
-                nuevasUnidades += ","+todo[1];
-            }
-            return nuevasUnidades+"%";
-        }
-        else
-        {
-            return valor+"%";
-        }
-    };
 
     function standardProperties ()
     {
@@ -2856,13 +2969,43 @@ function newRaphaelComponent(chartName, queryName, parameterEstructureArray, Arr
         thisChart.parameters = parameters;
         thisChart.listeners = listeners;
         thisChart.setStyle = setStyle;
-        thisChart.format = format;
-        thisChart.formatPercentage = formatPercentage;
         thisChart.addPanel = addPanel; 
         thisChart.setWidth = setWidth;
         thisChart.addToPanel = addToPanel;
         thisChart.queryDefinition.dataAccessId = dataAccessId;
         thisChart.queryDefinition.path = path;
+
+        thisChart.gageLabelLeft = gageLabelLeft;
+        thisChart.gageLabelRight =  gageLabelRight;
+        thisChart.addGageValueLabels = addGageValueLabels;
+        thisChart.gageFormat = gageFormat;
+        thisChart.queryComponent = queryComponent;
+        thisChart.queryComponentResultName = queryComponentResultName;
+        thisChart.queryComponentValue = queryComponentValue;
+        thisChart.hideMinMax = hideMinMax;
+        thisChart.defaultProperties = defaultProperties;
+        thisChart.addDefaultProperties = addDefaultProperties;
+        thisChart.gageComponent = gageComponent;
+        thisChart.gageComponentObject = gageComponentObject;
+
+        thisChart.gageLabelLeft1 = gageLabelLeft1;
+        thisChart.gageLabelRight1 =  gageLabelRight1;
+        thisChart.gageLabelLeft2 = gageLabelLeft2;
+        thisChart.gageLabelRight2 =  gageLabelRight2;
+        thisChart.addGageValueLabels1 = addGageValueLabels1;
+        thisChart.addGageValueLabels2 = addGageValueLabels2;
+        thisChart.gageFormat1 = gageFormat1;
+        thisChart.gageFormat2 = gageFormat2;
+        thisChart.hideMinMax1 = hideMinMax1;
+        thisChart.hideMinMax2 = hideMinMax2;
+        thisChart.defaultProperties1 = defaultProperties1;
+        thisChart.defaultProperties2 = defaultProperties2;
+        thisChart.addDefaultProperties1 = addDefaultProperties1;
+        thisChart.addDefaultProperties2 = addDefaultProperties2;
+        thisChart.gageComponent1 = gageComponent1;
+        thisChart.gageComponentObject1 = gageComponentObject1;
+        thisChart.gageComponent2 = gageComponent2;
+        thisChart.gageComponentObject2 = gageComponentObject2;
     }
 
 
@@ -2870,133 +3013,167 @@ function newRaphaelComponent(chartName, queryName, parameterEstructureArray, Arr
     {
         if(styleName === "gauge")
         {
-            var nombreParametro;
-            var thisQueryComponent_Raphael;
-            thisQueryComponent_Raphael = newQueryComponent("queryComponent_"+chartName, parameterEstructureArray, queryName);
-            nombreParametro = thisQueryComponent_Raphael.resultvar;
-            
-            thisQueryComponent_Raphael.postExecution = function ()
+            var queryComponentInstance = thisChart.queryComponent;
+            var queryComponentInstanceIsObject = typeof queryComponentInstance === 'object';
+            if(queryComponentInstanceIsObject)
             {
-                Dashboards.fireChange(nombreParametro,this.result[0][1]);
-            };
+                queryComponentInstance.postExecution = function ()
+                {
+                    Dashboards.fireChange(thisChart.queryComponentResultName,this.result[0][1]);
+                };
+            }
 
             thisChart.customfunction = function f(vis,queryResult) 
             {
-                //borra el html por si el grafico se refresca
+                //borra el html por si el grafico se 
+                
                 var node = document.getElementById(thisChart.htmlObject);
                 while (node.hasChildNodes()) 
                 {
                     node.removeChild(node.firstChild);
                 }
-             
-                var valor= parseFloat(Dashboards.getComponentByName(nombreParametro));
-                var gg1 = new JustGage(
+                thisChart.queryComponentValue = parseFloat(Dashboards.getComponentByName(thisChart.queryComponentResultName));
+                thisChart.gageComponentObject.value = thisChart.queryComponentValue;
+                var valueNaN = isNaN(thisChart.gageComponentObject.value);
+                if(!valueNaN)
                 {
-                    id: chartName,
-                    value: valor,
-                    title: "",
-                    min: 0,
-                    max: 100,
-                    relativeGaugeSize: true,
-                    symbol: "%",
-                    donut: false,
-                    levelColors: ["#FF0000", "#FFFF00", "#008000"],
-                    textRenderer: thisChart.formatPercentage
-                });
+                    thisChart.gageComponentObject.hideMinMax = false;
+                }
+                thisChart.gageComponent = new JustGage(thisChart.gageComponentObject);
             };
         }
         else if(styleName === "donut")
         {
-            var nombreParametro;
-            var thisQueryComponent_Raphael;
-            thisQueryComponent_Raphael = newQueryComponent("queryComponent_"+chartName, parameterEstructureArray, queryName);
-            nombreParametro = thisQueryComponent_Raphael.resultvar;
-            
-            thisQueryComponent_Raphael.postExecution = function ()
+            var queryComponentInstance = thisChart.queryComponent;
+            var queryComponentInstanceIsObject = typeof queryComponentInstance === 'object';
+            if(queryComponentInstanceIsObject)
             {
-                Dashboards.fireChange(nombreParametro,this.result[0][1]);
-            };
+                queryComponentInstance.postExecution = function ()
+                {
+                    Dashboards.fireChange(thisChart.queryComponentResultName,this.result[0][1]);
+                };
+            }
 
             thisChart.customfunction = function f(vis,queryResult) 
             {
-                //borra el html por si el grafico se refresca
+                //borra el html por si el grafico se 
+                
                 var node = document.getElementById(thisChart.htmlObject);
                 while (node.hasChildNodes()) 
                 {
                     node.removeChild(node.firstChild);
                 }
-             
-                var valor= parseFloat(Dashboards.getComponentByName(nombreParametro));
-                var gg1 = new JustGage(
+                thisChart.queryComponentValue = parseFloat(Dashboards.getComponentByName(thisChart.queryComponentResultName));
+                thisChart.gageComponentObject.value = thisChart.queryComponentValue;
+                var valueNaN = isNaN(thisChart.gageComponentObject.value);
+                if(!valueNaN)
                 {
-                    id: chartName,
-                    value: valor,
-                    title: "",
-                    min: 0,
-                    max: 100,
-                    relativeGaugeSize: true,
-                    symbol: "%",
-                    donut: true,
-                    levelColors: ["#FF0000", "#FFFF00", "#008000"],
-                    textRenderer: thisChart.formatPercentage
-                });
+                    thisChart.gageComponentObject.hideMinMax = false;
+                }
+                thisChart.gageComponentObject.donut = true;
+                thisChart.gageComponent = new JustGage(thisChart.gageComponentObject);
             };
         }
         else if(styleName === "2 gauges")
         {
-            var nombreParametro1;
-            var thisQueryComponent_Raphael1;
-            thisQueryComponent_Raphael1 = newQueryComponent("queryComponent_1"+chartName, parameterEstructureArray, queryName);
-            nombreParametro1 = thisQueryComponent_Raphael1.resultvar;
-            
-            thisQueryComponent_Raphael1.postExecution = function ()
+            addPanel = function(titlePanel, generalInfo, idPanelFatherContainer, height, mdSize, lgSize) 
             {
-                Dashboards.fireChange(nombreParametro1,this.result[0][1]);
-            };
+                addPanelHtmlCode(titlePanel, generalInfo, chartName, idPanelFatherContainer, mdSize, lgSize, "default");
+                document.getElementById(chartName).style.height= height+"px";
+                thisChart.height = height;
+                thisChart.htmlObject = chartName;
 
-            var nombreParametro2;
-            var thisQueryComponent_Raphael2;
-            thisQueryComponent_Raphael2 = newQueryComponent("queryComponent_2"+chartName, parameterEstructureArray, queryName);
-            nombreParametro2 = thisQueryComponent_Raphael2.resultvar;
-            
-            thisQueryComponent_Raphael2.postExecution = function ()
-            {
-                Dashboards.fireChange(nombreParametro2,this.result[0][1]);
+                //edito la columna del body de dicho panel (a la mitad cuando este en una pantalla grande)
+                $( "#"+chartName+"Col").alterClass( 'col-*', "col-xs-" + 12 + " col-sm-" + 12 + " col-md-" + 6 + " col-lg-"+ 6);
+                
+                //agrego una nueva columna al body del panel y asigno su largo
+                addCol(chartName+"_2", chartName+"Row", 12, 12, 6, 6);
+                document.getElementById(chartName+"_2").style.height= height+"px";
+
+                return thisChart;
             };
+            thisChart.addPanel = addPanel;
+
+            var queryComponent1 = newQueryComponent("queryComponent_1"+chartName, parameterEstructureArray, queryName);
+            thisChart.queryComponent1 = queryComponent1;
+
+            var queryComponentResultName1 = thisChart.queryComponent1.resultvar;
+            thisChart.queryComponentResultName1 = queryComponentResultName1;
+
+            var queryComponentValue1;
+            thisChart.queryComponentValue1 = queryComponentValue1;
+
+            var queryComponent2 = newQueryComponent("queryComponent_2"+chartName, parameterEstructureArray, queryName);
+            thisChart.queryComponent2 = queryComponent2;
+
+            var queryComponentResultName2 = thisChart.queryComponent2.resultvar;
+            thisChart.queryComponentResultName2 = queryComponentResultName2;
+
+            var queryComponentValue2;
+            thisChart.queryComponentValue2 = queryComponentValue2;
+            
+            var queryComponentInstance = thisChart.queryComponent1;
+            var queryComponentInstanceIsObject = typeof queryComponentInstance === 'object';
+            if(queryComponentInstanceIsObject)
+            {
+                queryComponentInstance.postExecution = function ()
+                {
+                    Dashboards.fireChange(thisChart.queryComponentResultName1,this.result[0][1]);
+                };
+            }
+            
+            var queryComponentInstance = thisChart.queryComponent2;
+            var queryComponentInstanceIsObject = typeof queryComponentInstance === 'object';
+            if(queryComponentInstanceIsObject)
+            {
+                queryComponentInstance.postExecution = function ()
+                {
+                    Dashboards.fireChange(thisChart.queryComponentResultName2,this.result[1][1]);
+                };
+            }
 
             thisChart.customfunction = function f(vis,queryResult) 
             {
+                var node = document.getElementById(chartName);
+                while (node.hasChildNodes()) {
+                    node.removeChild(node.firstChild);
+                 }
+               
+                var node2 = document.getElementById(chartName+'_2');
+                while (node2.hasChildNodes()) {
+                    node2.removeChild(node2.firstChild);
+                 }
                             
-                var valor1= parseFloat(Dashboards.getComponentByName(nombreParametro1));
-                var valor2= parseFloat(Dashboards.getComponentByName(nombreParametro2));
-                var gg1 = new JustGage(
+                thisChart.queryComponentValue1 = parseFloat(Dashboards.getComponentByName(thisChart.queryComponentResultName1));
+                var gaugeInstance = thisChart.gageComponentObject1;
+                var gaugeInstanceIsObject = typeof gaugeInstance === 'object';
+                if(gaugeInstanceIsObject)
                 {
-                    id: chartName,
-                    value: valor1,
-                    formatNumber: true,
-                    label: "Mujer",
-                    min: 0,
-                    max: 100,
-                    relativeGaugeSize: true,
-                    symbol: "%",
-                    donut: false,
-                    levelColors: ["#FF0000", "#FFFF00", "#008000"],
-                    textRenderer: thisChart.formatPercentage
-                });
-                var gg2 = new JustGage(
+                    gaugeInstance.value = thisChart.queryComponentValue1;
+                    var valueNaN = isNaN(gaugeInstance.value);
+                    if(!valueNaN)
+                    {
+                        gaugeInstance.hideMinMax = false;
+                    }
+                    thisChart.gageComponentObject1 = gaugeInstance;
+                    thisChart.gageComponent1 = new JustGage(thisChart.gageComponentObject1);
+                }
+                
+
+                thisChart.queryComponentValue2 = parseFloat(Dashboards.getComponentByName(thisChart.queryComponentResultName2));
+                gaugeInstance = thisChart.gageComponentObject2;
+                gaugeInstanceIsObject = typeof gaugeInstance === 'object';
+                if(gaugeInstanceIsObject)
                 {
-                    id: chartName+"2",
-                    value: valor2,
-                    formatNumber: true,
-                    label: "Mujer",
-                    min: 0,
-                    max: 100,
-                    relativeGaugeSize: true,
-                    symbol: "%",
-                    donut: false,
-                    levelColors: ["#FF0000", "#FFFF00", "#008000"],
-                    textRenderer: thisChart.formatPercentage
-                });
+                    gaugeInstance.value = thisChart.queryComponentValue2;
+                    var valueNaN = isNaN(gaugeInstance.value);
+                    if(!valueNaN)
+                    {
+                        gaugeInstance.hideMinMax = false;
+                    }
+                    thisChart.gageComponentObject2 = gaugeInstance;
+                    thisChart.gageComponent2 = new JustGage(thisChart.gageComponentObject2);
+                }
             };
         }
         return thisChart;
